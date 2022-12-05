@@ -25,8 +25,8 @@ def alpha_beta_decision(board, turn, ai_level, queue, max_player):
         explored_nodes += 1
         updated_board = board.copy()
         player = 2 - (turn % 2)
-        updated_board.add_disk(move, player, True)
-        value, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, alpha, beta, explored_nodes)
+        updated_board.add_disk(move, player, False)
+        value, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, ai_level, alpha, beta, explored_nodes)
         if value > best_value:
             best_value = value
             best_move = move
@@ -35,10 +35,10 @@ def alpha_beta_decision(board, turn, ai_level, queue, max_player):
     print("BEST VALUE : ", best_value)
     queue.put(best_move)
 
-def min_value_alpha_beta(board, turn, alpha, beta, explored_nodes):
+def min_value_alpha_beta(board, turn, ai_level, alpha, beta, explored_nodes):
     if board.check_victory():
         return 1, explored_nodes
-    elif turn > 42:
+    elif turn > 10:
         return 0, explored_nodes
     possible_moves = board.get_possible_moves()
     value = 2
@@ -46,9 +46,8 @@ def min_value_alpha_beta(board, turn, alpha, beta, explored_nodes):
         explored_nodes += 1
         updated_board = board.copy()
         player = 2 - (turn % 2)
-        updated_board.add_disk(move, player, True)
-        print("nouveau tableau : ", updated_board)
-        max_val, explored_nodes = max_value_alpha_beta(updated_board, turn + 1, alpha, beta, explored_nodes)
+        updated_board.add_disk(move, player, False)
+        max_val, explored_nodes = max_value_alpha_beta(updated_board, turn + 1, alpha, ai_level, beta, explored_nodes)
         value = min(value, max_val)
         if value <= alpha:
             return value, explored_nodes
@@ -56,10 +55,10 @@ def min_value_alpha_beta(board, turn, alpha, beta, explored_nodes):
     return value, explored_nodes
 
 
-def max_value_alpha_beta(board, turn, alpha, beta, explored_nodes):
+def max_value_alpha_beta(board, turn, alpha, ai_level, beta, explored_nodes):
     if board.check_victory():
         return -1, explored_nodes
-    elif turn > 42:
+    elif turn > 10:
         return 0, explored_nodes
     possible_moves = board.get_possible_moves()
     value = -2
@@ -67,9 +66,8 @@ def max_value_alpha_beta(board, turn, alpha, beta, explored_nodes):
         explored_nodes += 1
         updated_board = board.copy()
         player = 2 - (turn % 2)
-        updated_board.add_disk(move, player, True)
-        print("nouveau tableau : ", updated_board)
-        min_val, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, alpha, beta, explored_nodes)
+        updated_board.add_disk(move, player, False)
+        min_val, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, ai_level, alpha, beta, explored_nodes)
         value = max(value, min_val)
         if value >= beta:
             return value, explored_nodes
