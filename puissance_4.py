@@ -5,28 +5,28 @@ import random as rnd
 from threading import Thread
 from queue import Queue
 
-
 disk_color = ['white', 'red', 'orange']
 disks = list()
 
 player_type = ['human']
 for i in range(42):
-    player_type.append('AI: alpha-beta level '+str(i+1))
+    player_type.append('AI: alpha-beta level ' + str(i + 1))
+
 
 def alpha_beta_decision(board, turn, ai_level, queue, max_player):
     explored_nodes = 0
     possible_moves = board.get_possible_moves()
     best_move = possible_moves[0]
-    best_value = -2
-    alpha = -2
-    beta = 2
+    best_value = -2000000
+    alpha = -2000000
+    beta = 2000000
     explored_nodes += len(possible_moves)
     for move in possible_moves:
         explored_nodes += 1
         updated_board = board.copy()
-        player = 2 - (turn % 2)
-        updated_board.add_disk(move, player, False)
-        value, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, ai_level, alpha, beta, explored_nodes)
+        updated_board.add_disk(move, max_player, False)
+
+        value, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, alpha, beta, 2 - ((max_player + 1) % 2), explored_nodes, max_recursion=ai_level+turn)
         if value > best_value:
             best_value = value
             best_move = move
@@ -35,19 +35,22 @@ def alpha_beta_decision(board, turn, ai_level, queue, max_player):
     print("BEST VALUE : ", best_value)
     queue.put(best_move)
 
-def min_value_alpha_beta(board, turn, ai_level, alpha, beta, explored_nodes):
+
+def min_value_alpha_beta(board, turn, alpha, beta, max_player, explored_nodes, max_recursion):
     if board.check_victory():
-        return 1, explored_nodes
-    elif turn > 10:
+        return -200, explored_nodes
+
+    elif turn > max_recursion:
         return 0, explored_nodes
+
     possible_moves = board.get_possible_moves()
-    value = 2
+    value = 2000000
+
     for move in possible_moves:
         explored_nodes += 1
         updated_board = board.copy()
-        player = 2 - (turn % 2)
-        updated_board.add_disk(move, player, False)
-        max_val, explored_nodes = max_value_alpha_beta(updated_board, turn + 1, alpha, ai_level, beta, explored_nodes)
+        updated_board.add_disk(move, max_player, False)
+        max_val, explored_nodes = max_value_alpha_beta(updated_board, turn + 1, alpha, beta, 2 - ((max_player + 1) % 2), explored_nodes, max_recursion)
         value = min(value, max_val)
         if value <= alpha:
             return value, explored_nodes
@@ -55,29 +58,31 @@ def min_value_alpha_beta(board, turn, ai_level, alpha, beta, explored_nodes):
     return value, explored_nodes
 
 
-def max_value_alpha_beta(board, turn, alpha, ai_level, beta, explored_nodes):
+def max_value_alpha_beta(board, turn, alpha, beta, max_player, explored_nodes, max_recursion):
     if board.check_victory():
-        return -1, explored_nodes
-    elif turn > 10:
+        return -200, explored_nodes
+
+    elif turn > max_recursion:
         return 0, explored_nodes
+
     possible_moves = board.get_possible_moves()
-    value = -2
+    value = -2000000
+
     for move in possible_moves:
         explored_nodes += 1
         updated_board = board.copy()
-        player = 2 - (turn % 2)
-        updated_board.add_disk(move, player, False)
-        min_val, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, ai_level, alpha, beta, explored_nodes)
+        updated_board.add_disk(move, max_player, False)
+        min_val, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, alpha, beta, 2 - ((max_player + 1) % 2), explored_nodes, max_recursion)
         value = max(value, min_val)
         if value >= beta:
             return value, explored_nodes
-        alpha = max(alpha,value)
+        alpha = max(alpha, value)
     return value, explored_nodes
+
 
 class Board:
     grid = np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]])
-
 
     def eval(self, player):
         return 0
@@ -119,7 +124,8 @@ class Board:
         # Horizontal alignment check
         for line in range(6):
             for horizontal_shift in range(4):
-                if self.grid[horizontal_shift][line] == self.grid[horizontal_shift + 1][line] == self.grid[horizontal_shift + 2][line] == self.grid[horizontal_shift + 3][line] != 0:
+                if self.grid[horizontal_shift][line] == self.grid[horizontal_shift + 1][line] == \
+                        self.grid[horizontal_shift + 2][line] == self.grid[horizontal_shift + 3][line] != 0:
                     return True
         # Vertical alignment check
         for column in range(7):
@@ -130,11 +136,14 @@ class Board:
         # Diagonal alignment check
         for horizontal_shift in range(4):
             for vertical_shift in range(3):
-                if self.grid[horizontal_shift][vertical_shift] == self.grid[horizontal_shift + 1][vertical_shift + 1] ==\
-                        self.grid[horizontal_shift + 2][vertical_shift + 2] == self.grid[horizontal_shift + 3][vertical_shift + 3] != 0:
+                if self.grid[horizontal_shift][vertical_shift] == self.grid[horizontal_shift + 1][vertical_shift + 1] == \
+                        self.grid[horizontal_shift + 2][vertical_shift + 2] == self.grid[horizontal_shift + 3][
+                    vertical_shift + 3] != 0:
                     return True
-                elif self.grid[horizontal_shift][5 - vertical_shift] == self.grid[horizontal_shift + 1][4 - vertical_shift] ==\
-                        self.grid[horizontal_shift + 2][3 - vertical_shift] == self.grid[horizontal_shift + 3][2 - vertical_shift] != 0:
+                elif self.grid[horizontal_shift][5 - vertical_shift] == self.grid[horizontal_shift + 1][
+                    4 - vertical_shift] == \
+                        self.grid[horizontal_shift + 2][3 - vertical_shift] == self.grid[horizontal_shift + 3][
+                    2 - vertical_shift] != 0:
                     return True
         return False
 
@@ -172,7 +181,8 @@ class Connect4:
             self.move(column)
 
     def ai_turn(self, ai_level):
-        Thread(target=alpha_beta_decision, args=(self.board, self.turn, ai_level, self.ai_move, self.current_player(),)).start()
+        Thread(target=alpha_beta_decision,
+               args=(self.board, self.turn, ai_level, self.ai_move, self.current_player(),)).start()
         self.ai_wait_for_move()
 
     def ai_wait_for_move(self):
@@ -218,9 +228,9 @@ canvas1 = tk.Canvas(window, bg="blue", width=width, height=height)
 for i in range(7):
     disks.append(list())
     for j in range(5, -1, -1):
-        disks[i].append(canvas1.create_oval(row_margin + i * row_width, row_margin + j * row_height, (i + 1) * row_width - row_margin,
-                            (j + 1) * row_height - row_margin, fill='white'))
-
+        disks[i].append(canvas1.create_oval(row_margin + i * row_width, row_margin + j * row_height,
+                                            (i + 1) * row_width - row_margin,
+                                            (j + 1) * row_height - row_margin, fill='white'))
 
 canvas1.grid(row=0, column=0, columnspan=2)
 
