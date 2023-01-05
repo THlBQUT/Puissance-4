@@ -17,16 +17,16 @@ def alpha_beta_decision(board, turn, ai_level, queue, max_player):
     explored_nodes = 0
     possible_moves = board.get_possible_moves()
     best_move = possible_moves[0]
-    best_value = -2000000
-    alpha = -2000000
-    beta = 2000000
+    best_value = float('-inf')
+    alpha = float('-inf')
+    beta = float('inf')
     explored_nodes += len(possible_moves)
     for move in possible_moves:
         explored_nodes += 1
         updated_board = board.copy()
         updated_board.add_disk(move, max_player, False)
 
-        value, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, alpha, beta, 2 - ((max_player + 1) % 2), explored_nodes, max_recursion=ai_level+turn)
+        value = minmax(updated_board, ai_level, turn, alpha, beta, game.current_player())
         if value > best_value:
             best_value = value
             best_move = move
@@ -50,7 +50,8 @@ def min_value_alpha_beta(board, turn, alpha, beta, max_player, explored_nodes, m
         explored_nodes += 1
         updated_board = board.copy()
         updated_board.add_disk(move, max_player, False)
-        max_val, explored_nodes = max_value_alpha_beta(updated_board, turn + 1, alpha, beta, 2 - ((max_player + 1) % 2), explored_nodes, max_recursion)
+        max_val, explored_nodes = max_value_alpha_beta(updated_board, turn + 1, alpha, beta, 2 - ((max_player + 1) % 2),
+                                                       explored_nodes, max_recursion)
         value = min(value, max_val)
         if value <= alpha:
             return value, explored_nodes
@@ -72,7 +73,8 @@ def max_value_alpha_beta(board, turn, alpha, beta, max_player, explored_nodes, m
         explored_nodes += 1
         updated_board = board.copy()
         updated_board.add_disk(move, max_player, False)
-        min_val, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, alpha, beta, 2 - ((max_player + 1) % 2), explored_nodes, max_recursion)
+        min_val, explored_nodes = min_value_alpha_beta(updated_board, turn + 1, alpha, beta, 2 - ((max_player + 1) % 2),
+                                                       explored_nodes, max_recursion)
         value = max(value, min_val)
         if value >= beta:
             return value, explored_nodes
@@ -80,12 +82,59 @@ def max_value_alpha_beta(board, turn, alpha, beta, max_player, explored_nodes, m
     return value, explored_nodes
 
 
+def minmax(board, depth, turn, alpha, beta, max_player):
+    if depth == 0 or board.check_victory():
+        return board.eval(max_player, turn)
+
+    if max_player == 1:
+        best_score = float('-inf')
+        for move in board.get_possible_moves():
+            new_board = board.copy()
+            new_board.add_disk(move, max_player, False)
+            score = minmax(new_board, depth - 1, turn, alpha, beta, game.current_player())
+            best_score = max(score, best_score)
+            alpha = max(alpha, best_score)
+            if beta <= alpha:
+                break
+        return best_score
+    else:
+        best_score = float('inf')
+        for move in board.get_possible_moves():
+            new_board = board.copy()
+            new_board.add_disk(move, max_player, False)
+            score = minmax(new_board, depth - 1, turn, alpha, beta, game.current_player())
+            best_score = min(score, best_score)
+            beta = min(beta, best_score)
+            if beta <= alpha:
+                break
+        return best_score
+
+
 class Board:
     grid = np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]])
 
-    def eval(self, player):
-        return 0
+    def eval(self, player, turn):
+        if player == 1:
+            return 0
+        else:
+            opponent = 1
+
+        # Les méthodes count_fours, count_threes et count_twos
+        # vont définir notre heuristique
+
+        player_fours = self.count_fours(player)
+        opponent_fours = self.count_fours(opponent)
+
+        player_threes = self.count_threes(player)
+        opponent_threes = self.count_threes(opponent)
+
+        player_twos = self.count_twos(player)
+        opponent_twos = self.count_twos(opponent)
+
+        return \
+            player_fours * 5 + player_threes * 2 + player_twos \
+            - opponent_fours * 10 - opponent_threes * 2 - opponent_twos
 
     def copy(self):
         new_board = Board()
@@ -138,14 +187,134 @@ class Board:
             for vertical_shift in range(3):
                 if self.grid[horizontal_shift][vertical_shift] == self.grid[horizontal_shift + 1][vertical_shift + 1] == \
                         self.grid[horizontal_shift + 2][vertical_shift + 2] == self.grid[horizontal_shift + 3][
-                    vertical_shift + 3] != 0:
+                        vertical_shift + 3] != 0:
                     return True
                 elif self.grid[horizontal_shift][5 - vertical_shift] == self.grid[horizontal_shift + 1][
-                    4 - vertical_shift] == \
+                        4 - vertical_shift] == \
                         self.grid[horizontal_shift + 2][3 - vertical_shift] == self.grid[horizontal_shift + 3][
-                    2 - vertical_shift] != 0:
+                        2 - vertical_shift] != 0:
                     return True
         return False
+
+    def count_fours(self, player):
+        fours = 0
+
+        # Horizontal
+        for line in range(6):
+            for column in range(4):
+                if column + 3 < 7 \
+                        and self.grid[column][line] == player \
+                        and self.grid[column + 1][line] == player \
+                        and self.grid[column + 2][line] == player \
+                        and self.grid[column + 3][line] == player:
+                    fours += 1
+
+        # Vertical
+        for line in range(3):
+            for column in range(7):
+                if self.grid[column][line] == player \
+                        and self.grid[column][line + 1] == player \
+                        and self.grid[column][line + 2] == player \
+                        and self.grid[column][line + 3] == player:
+                    fours += 1
+
+        # Diagonale
+        for line in range(3):
+            for column in range(4):
+                if column + 3 < 7 \
+                        and self.grid[column][line] == player \
+                        and self.grid[column + 1][line + 1] == player \
+                        and self.grid[column + 2][line + 2] == player \
+                        and self.grid[column + 3][line + 3] == player:
+                    fours += 1
+
+        # Diagonale inverse
+        for line in range(3, 6):
+            for column in range(7):
+                if column + 3 < 7 \
+                        and self.grid[column][line] == player \
+                        and self.grid[column + 1][line - 1] == player \
+                        and self.grid[column + 2][line - 2] == player \
+                        and self.grid[column + 3][line - 3] == player:
+                    fours += 1
+
+        return fours
+
+    def count_threes(self, player):
+        threes = 0
+
+        # Horizontal
+        for line in range(6):
+            for column in range(6):
+                if column + 2 < 7 \
+                        and self.grid[column][line] == player \
+                        and self.grid[column + 1][line] == player \
+                        and self.grid[column + 2][line] == player:
+                    threes += 1
+
+        # Vertical
+        for line in range(4):
+            for column in range(7):
+                if self.grid[column][line] == player \
+                        and self.grid[column][line + 1] == player \
+                        and self.grid[column][line + 2] == player:
+                    threes += 1
+
+        # Diagonale
+        for line in range(4):
+            for column in range(6):
+                if column + 2 < 7 \
+                        and self.grid[column][line] == player \
+                        and self.grid[column + 1][line + 1] == player \
+                        and self.grid[column + 2][line + 2] == player:
+                    threes += 1
+
+        # Diagonale inverse
+        for line in range(2, 6):
+            for column in range(6):
+                if column + 2 < 7 \
+                        and self.grid[column][line] == player \
+                        and self.grid[column + 1][line - 1] == player \
+                        and self.grid[column + 2][line - 2] == player:
+                    threes += 1
+
+        return threes
+
+    def count_twos(self, player):
+        twos = 0
+
+        # Horizontal
+        for line in range(6):
+            for column in range(5):
+                if column + 1 < 7 \
+                        and self.grid[column][line] == player \
+                        and self.grid[column + 1][line] == player:
+                    twos += 1
+
+        # Vertical
+        for line in range(5):
+            for column in range(7):
+                if self.grid[column][line] == player \
+                        and self.grid[column][line + 1] == player:
+                    twos += 1
+
+        # Diagonale
+        for line in range(5):
+            for column in range(5):
+                if column + 1 < 7 \
+                        and self.grid[column][line] == player \
+                        and self.grid[column + 1][line + 1] == player:
+                    twos += 1
+
+        # Diagonale inverse
+        for line in range(1, 6):
+            for column in range(5):
+                if column + 1 < 7 \
+                        and self.grid[column][line] == player \
+                        and self.grid[column + 1][line - 1] == player:
+                    twos += 1
+
+        return twos
 
 
 class Connect4:
@@ -176,6 +345,7 @@ class Connect4:
             self.handle_turn()
 
     def click(self, event):
+        print(self.current_player())
         if self.human_turn:
             column = event.x // row_width
             self.move(column)
@@ -206,6 +376,7 @@ class Connect4:
             self.current_player()) + " is playing"
         if self.players[self.current_player() - 1] != 0:
             self.human_turn = False
+            print(self.players)
             self.ai_turn(self.players[self.current_player() - 1])
         else:
             self.human_turn = True
