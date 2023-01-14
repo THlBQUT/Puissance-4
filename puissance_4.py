@@ -133,8 +133,8 @@ class Board:
         opponent_twos = self.count_twos(opponent)
 
         return \
-            player_fours * 5 + player_threes * 2 + player_twos \
-            - opponent_fours * 10 - opponent_threes * 2 - opponent_twos
+            player_fours + player_threes + player_twos\
+                - (opponent_fours * 5 + opponent_threes * 1.5 + opponent_twos)
 
     def copy(self):
         new_board = Board()
